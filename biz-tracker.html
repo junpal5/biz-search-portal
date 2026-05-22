@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사업자 휴·폐업 조회</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ── MiniMax Design Tokens ── */
+    :root {
+      --color-primary:       #0A0A0A;
+      --color-on-primary:    #FFFFFF;
+      --color-canvas:        #FFFFFF;
+      --color-surface:       #F5F5F5;
+      --color-surface-soft:  #FAFAFA;
+      --color-hairline:      #E5E5E5;
+      --color-hairline-soft: #F0F0F0;
+      --color-ink:           #1A1A1A;
+      --color-charcoal:      #404040;
+      --color-steel:         #888888;
+      --color-stone:         #A0A0A0;
+      --color-muted:         #C0C0C0;
+
+      --color-brand-coral:     #FF4B2B;
+      --color-brand-blue:      #2563EB;
+      --color-brand-blue-deep: #1D4ED8;
+      --color-brand-blue-200:  #BFDBFE;
+      --color-brand-blue-700:  #1E40AF;
+
+      --color-success-bg:   #DCFCE7;
+      --color-success-text: #166534;
+      --color-warn-bg:      #FEF9C3;
+      --color-warn-text:    #854D0E;
+      --color-closed-bg:    #FEE2E2;
+      --color-closed-text:  #991B1B;
+      --color-error-bg:     #F3E8FF;
+      --color-error-text:   #6B21A8;
+
+      --space-xs:  8px;
+      --space-sm:  12px;
+      --space-md:  16px;
+      --space-lg:  20px;
+      --space-xl:  24px;
+      --space-xxl: 32px;
+
+      --rounded-sm:   6px;
+      --rounded-md:   8px;
+      --rounded-lg:   12px;
+      --rounded-xl:   16px;
+      --rounded-full: 9999px;
+
+      --font: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--color-surface-soft);
+      min-height: 100vh;
+      color: var(--color-ink);
+    }
+
+    /* ── Version Chip (bottom-left fixed) ── */
+    .ver-chip {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px 6px 8px;
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      border-radius: var(--rounded-full);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: rgba(0,0,0,0.18) 0px 4px 12px;
+      transition: background .15s, transform .1s;
+      border: none;
+      user-select: none;
+    }
+    .ver-chip:hover  { background: #2a2a2a; transform: translateY(-1px); }
+    .ver-chip:active { transform: translateY(0); }
+    .ver-chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-brand-coral);
+      flex-shrink: 0;
+    }
+
+    /* ── Version Modal ── */
+    .ver-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.45);
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: 0 0 68px 20px;
+    }
+    .ver-modal-overlay.open { display: flex; }
+    .ver-modal {
+      background: var(--color-canvas);
+      border-radius: var(--rounded-xl);
+      border: 1px solid var(--color-hairline);
+      box-shadow: rgba(36,36,36,0.12) 0px 12px 24px -4px;
+      width: 320px;
+      max-height: 70vh;
+      overflow-y: auto;
+      animation: slideUp .18s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .ver-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--color-hairline);
+      position: sticky;
+      top: 0;
+      background: var(--color-canvas);
+    }
+    .ver-modal-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-ink);
+    }
+    .ver-modal-close {
+      background: transparent;
+      border: none;
+      color: var(--color-steel);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: var(--rounded-full);
+      transition: color .15s;
+    }
+    .ver-modal-close:hover { color: var(--color-ink); }
+    .ver-modal-body { padding: var(--space-md) var(--space-lg) var(--space-lg); }
+    .ver-entry { margin-bottom: var(--space-lg); }
+    .ver-entry:last-child { margin-bottom: 0; }
+    .ver-entry-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      margin-bottom: var(--space-xs);
+    }
+    .ver-num {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--color-ink);
+    }
+    .ver-new-badge {
+      background: var(--color-brand-coral);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: var(--rounded-full);
+    }
+    .ver-date {
+      font-size: 0.75rem;
+      color: var(--color-stone);
+      margin-left: auto;
+    }
+    .ver-entry ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .ver-entry li {
+      font-size: 0.8125rem;
+      color: var(--color-charcoal);
+      line-height: 1.5;
+      padding-left: var(--space-md);
+      position: relative;
+    }
+    .ver-entry li::before {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 8px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--color-hairline);
+    }
+    .ver-entry + .ver-entry { border-top: 1px solid var(--color-hairline-soft); padding-top: var(--space-lg); }
+
+    /* ── Header ── */
+    .header {
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      padding: var(--space-xxl) var(--space-xl) var(--space-lg);
+      text-align: center;
+      position: relative;
+    }
+    .header-contributor {
+      position: absolute;
+      bottom: var(--space-sm);
+      right: var(--space-lg);
+      font-size: 0.6875rem;
+      color: rgba(255,255,255,0.28);
+      text-align: right;
+      line-height: 1.6;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+    .header p {
+      margin-top: var(--space-xs);
+      font-size: 0.875rem;
+      color: rgba(255,255,255,0.52);
+      font-weight: 400;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 720px;
+      margin: var(--space-xxl) auto;
+      padding: 0 var(--space-md) var(--space-xxl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--color-canvas);
+      border-radius: var(--rounded-xl);
+      border: 1px solid var(--color-hairline);
+      box-shadow: rgba(0,0,0,0.04) 0px 1px 2px 0px;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-xl);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-hairline);
+    }
+    .step-badge {
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      border-radius: var(--rounded-full);
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-badge.done { background: var(--color-brand-coral); }
+    .card-header h2 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--color-ink);
+    }
+    .card-body { padding: var(--space-xl); }
+
+    /* ── Form elements ── */
+    label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--color-charcoal);
+      margin-bottom: var(--space-xs);
+    }
+
+    .input-wrap {
+      display: flex;
+      border: 1px solid var(--color-hairline);
+      border-radius: var(--rounded-md);
+      overflow: hidden;
+      transition: box-shadow .15s, border-color .15s;
+    }
+    .input-wrap:focus-within {
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+      border-color: var(--color-brand-blue);
+    }
+    .input-wrap input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 10px var(--space-md);
+      font-size: 0.9375rem;
+      font-family: var(--font);
+      background: transparent;
+      color: var(--color-ink);
+    }
+    .toggle-btn {
+      background: var(--color-surface);
+      border: none;
+      border-left: 1px solid var(--color-hairline);
+      padding: 0 var(--space-md);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background .15s;
+    }
+    .toggle-btn:hover { background: var(--color-hairline); }
+
+    /* ── File area ── */
+    .file-area {
+      border: 2px dashed var(--color-hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-xxl) var(--space-xl);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .file-area:hover, .file-area.drag-over {
+      border-color: var(--color-primary);
+      background: var(--color-surface);
+    }
+    .file-area input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .file-area .file-icon { font-size: 2rem; margin-bottom: var(--space-xs); }
+    .file-area p  { font-size: 0.875rem; color: var(--color-steel); }
+    .file-area small { font-size: 0.75rem; color: var(--color-stone); }
+
+    /* ── File name pill with remove button ── */
+    .file-name {
+      display: none;
+      align-items: center;
+      gap: var(--space-xs);
+      margin-top: var(--space-sm);
+      padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md);
+      background: var(--color-surface);
+      border: 1px solid var(--color-hairline);
+      border-radius: var(--rounded-full);
+    }
+    .file-name-text {
+      flex: 1;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--color-ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-remove-btn {
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      color: var(--color-steel);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--rounded-full);
+      transition: background .15s, color .15s;
+    }
+    .file-remove-btn:hover {
+      background: var(--color-closed-bg);
+      color: var(--color-closed-text);
+    }
+
+    select {
+      width: 100%;
+      padding: 10px var(--space-md);
+      border: 1px solid var(--color-hairline);
+      border-radius: var(--rounded-md);
+      font-size: 0.9375rem;
+      font-family: var(--font);
+      outline: none;
+      transition: box-shadow .15s, border-color .15s;
+      background: var(--color-canvas);
+      color: var(--color-ink);
+    }
+    select:focus {
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+      border-color: var(--color-brand-blue);
+    }
+
+    .hint { font-size: 0.75rem; color: var(--color-steel); margin-top: var(--space-xs); }
+
+    /* ── Buttons ── */
+    .btn-run {
+      width: 100%;
+      padding: 13px var(--space-xl);
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      border: none;
+      border-radius: var(--rounded-full);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn-run:hover:not(:disabled) { background: #2a2a2a; }
+    .btn-run:active:not(:disabled) { transform: scale(0.98); }
+    .btn-run:disabled {
+      background: var(--color-hairline);
+      color: var(--color-muted);
+      cursor: not-allowed;
+    }
+
+    /* ── Progress ── */
+    .progress-wrap { display: none; margin-top: var(--space-lg); }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8125rem;
+      color: var(--color-steel);
+      margin-bottom: var(--space-xs);
+    }
+    .progress-bar-bg {
+      background: var(--color-hairline);
+      border-radius: var(--rounded-full);
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--color-brand-coral);
+      border-radius: var(--rounded-full);
+      transition: width .3s ease;
+      width: 0%;
+    }
+
+    /* ── Result ── */
+    .result-section { display: none; }
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+    .result-header h3 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--color-ink);
+    }
+    .btn-download {
+      padding: 9px var(--space-lg);
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      border: none;
+      border-radius: var(--rounded-full);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-download:hover { background: #2a2a2a; }
+
+    /* ── Sample download ── */
+    .btn-sample {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px var(--space-md);
+      background: transparent;
+      color: var(--color-charcoal);
+      border: 1px solid var(--color-hairline);
+      border-radius: var(--rounded-full);
+      font-size: 0.75rem;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-sample:hover { border-color: var(--color-charcoal); color: var(--color-ink); }
+
+    /* ── Stats pills ── */
+    .stats { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-bottom: var(--space-md); }
+    .stat-pill {
+      padding: 4px var(--space-sm);
+      border-radius: var(--rounded-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pill-total   { background: var(--color-surface); color: var(--color-charcoal); border: 1px solid var(--color-hairline); }
+    .pill-active  { background: var(--color-success-bg); color: var(--color-success-text); }
+    .pill-suspend { background: var(--color-warn-bg);    color: var(--color-warn-text); }
+    .pill-closed  { background: var(--color-closed-bg);  color: var(--color-closed-text); }
+    .pill-error   { background: var(--color-error-bg);   color: var(--color-error-text); }
+
+    /* ── Table ── */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--color-hairline);
+      border-radius: var(--rounded-lg);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    thead th {
+      background: var(--color-surface);
+      color: var(--color-steel);
+      padding: var(--space-sm) var(--space-md);
+      text-align: left;
+      white-space: nowrap;
+      font-size: 0.75rem;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    tbody tr:nth-child(even) { background: var(--color-surface-soft); }
+    tbody tr:hover           { background: var(--color-surface); }
+    tbody td {
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--color-hairline-soft);
+      white-space: nowrap;
+      color: var(--color-charcoal);
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px var(--space-sm);
+      border-radius: var(--rounded-full);
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+    .badge-01  { background: var(--color-success-bg); color: var(--color-success-text); }
+    .badge-02  { background: var(--color-warn-bg);    color: var(--color-warn-text); }
+    .badge-03  { background: var(--color-closed-bg);  color: var(--color-closed-text); }
+    .badge-err { background: var(--color-error-bg);   color: var(--color-error-text); }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--rounded-md);
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      margin-top: var(--space-sm);
+      display: none;
+      white-space: pre-line;
+    }
+    .alert-error   { background: var(--color-closed-bg);   color: #991B1B; border: 1px solid #FECACA; }
+    .alert-warning { background: var(--color-warn-bg);     color: #854D0E; border: 1px solid #FDE68A; }
+    .alert-info    { background: var(--color-brand-blue-200); color: var(--color-brand-blue-700); border: 1px solid #93C5FD; }
+
+    .max-rows-note {
+      font-size: 0.75rem;
+      color: var(--color-stone);
+      text-align: right;
+      margin-top: var(--space-xs);
+    }
+
+    @media (max-width: 600px) {
+      .header h1    { font-size: 1.375rem; }
+      .container    { gap: var(--space-sm); margin: var(--space-xl) auto; }
+      .card-body    { padding: var(--space-md); }
+      .ver-chip     { bottom: 14px; left: 14px; }
+      .ver-modal    { width: calc(100vw - 28px); }
+      .ver-modal-overlay { padding: 0 0 60px 14px; }
+      .header-contributor {
+        position: static;
+        text-align: center;
+        margin-top: var(--space-sm);
+      }
+    }
+
+
+
+    /* ── Help icon ── */
+    .help-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 1px solid var(--color-hairline);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--color-steel);
+      text-decoration: none;
+      transition: border-color .15s, color .15s;
+    }
+    .help-icon:hover { border-color: var(--color-charcoal); color: var(--color-ink); }
+
+    /* ── Daily Usage ── */
+    .daily-usage {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: var(--space-md);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--color-surface);
+      border-radius: var(--rounded-md);
+      border: 1px solid var(--color-hairline-soft);
+    }
+    .daily-usage-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+    .daily-usage-label { color: var(--color-steel); }
+    .daily-usage-nums  { color: var(--color-charcoal); }
+    .daily-usage-nums strong { color: var(--color-ink); }
+    .daily-usage-track {
+      height: 4px;
+      background: var(--color-hairline);
+      border-radius: var(--rounded-full);
+      overflow: hidden;
+    }
+    .daily-usage-fill {
+      height: 100%;
+      background: var(--color-brand-blue);
+      border-radius: var(--rounded-full);
+      transition: width .4s ease;
+    }
+    .daily-usage-fill.warn  { background: #f59e0b; }
+    .daily-usage-fill.danger { background: var(--color-brand-coral); }
+
+    /* ── Portal Back Button ── */
+    .portal-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.85);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--rounded-full);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s;
+      position: absolute;
+      top: var(--space-lg);
+      left: var(--space-xl);
+    }
+    .portal-back-btn:hover { background: rgba(255,255,255,0.2); }
+  </style>
+</head>
+<body>
+
+
+
+<!-- ── Version Chip ── -->
+<button class="ver-chip" id="verChip" onclick="openVerModal()">
+  <span class="ver-chip-dot"></span>
+  v2.3.2
+</button>
+
+<!-- ── Version Modal ── -->
+<div class="ver-modal-overlay" id="verModalOverlay" onclick="handleOverlayClick(event)">
+  <div class="ver-modal" id="verModal">
+    <div class="ver-modal-head">
+      <span class="ver-modal-title">업데이트 내역</span>
+      <button class="ver-modal-close" onclick="closeVerModal()" title="닫기">✕</button>
+    </div>
+    <div class="ver-modal-body" id="verModalBody"></div>
+  </div>
+</div>
+
+<!-- ── Header ── -->
+<div class="header">
+<a href="index.html" class="portal-back-btn">← 포털로</a>
+  <h1>사업자 휴·폐업 조회</h1>
+  <p>국세청 사업자등록정보 상태조회 서비스 (공공데이터포털)</p>
+  <div class="header-contributor">Contributor: GMJ, JHJ, LJH<br>한국갤럽조사연구소</div>
+</div>
+
+<div class="container">
+
+  <!-- Step 1: API Key -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-badge">1</div>
+      <h2>공공데이터포털 API 인증키 입력</h2>
+    </div>
+    <div class="card-body">
+      <label for="apiKey">일반 인증키 (Decoding)</label>
+      <div class="input-wrap">
+        <input type="password" id="apiKey" placeholder="인증키를 입력하세요" autocomplete="off" />
+        <button class="toggle-btn" id="toggleKey" title="보기/숨기기">👁</button>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:var(--space-xs); gap:var(--space-sm);">
+        <p class="hint" style="margin-top:0;">공공데이터포털(data.go.kr) → 마이페이지 → 인증키 발급 → 일반 인증키(Decoding)</p>
+        <a href="https://www.data.go.kr/ugs/selectPublicDataUseGuideView.do" target="_blank" rel="noopener" class="help-icon" title="공공데이터포털 이용 가이드">?</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: File Upload -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-badge">2</div>
+      <h2>엑셀 파일 업로드 및 열 선택</h2>
+    </div>
+    <div class="card-body">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-xs);">
+        <label style="margin-bottom:0;">XLSX 파일 선택</label>
+        <button class="btn-sample" onclick="downloadSample()">📥 양식 예시 다운로드</button>
+      </div>
+      <div class="file-area" id="fileArea">
+        <input type="file" id="fileInput" accept=".xlsx,.xls" />
+        <div class="file-icon">📂</div>
+        <p>클릭하거나 파일을 드래그하여 업로드하세요<br><small>(.xlsx / .xls)</small></p>
+      </div>
+
+      <div class="file-name" id="fileNameEl">
+        <span class="file-name-text" id="fileNameText"></span>
+        <button class="file-remove-btn" id="fileRemoveBtn" title="파일 삭제">✕</button>
+      </div>
+
+      <div id="colSelectWrap" style="margin-top:16px; display:none;">
+        <label for="colSelect">사업자등록번호 열 선택</label>
+        <select id="colSelect">
+          <option value="">-- 열을 선택하세요 --</option>
+        </select>
+        <p class="hint">하이픈(-)이 포함되어 있어도 자동으로 제거됩니다.</p>
+      </div>
+
+      <div class="alert alert-warning" id="colWarnAlert"></div>
+      <div class="alert alert-error"   id="fileAlert"></div>
+    </div>
+  </div>
+
+  <!-- Step 3: Run -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-badge">3</div>
+      <h2>조회 실행</h2>
+    </div>
+    <div class="card-body">
+      <button class="btn-run" id="runBtn" disabled>🔍 조회 시작</button>
+
+      <div class="daily-usage" id="dailyUsage">
+        <div class="daily-usage-row">
+          <span class="daily-usage-label">오늘 조회 현황</span>
+          <span class="daily-usage-nums" id="dailyUsageNums"></span>
+        </div>
+        <div class="daily-usage-track">
+          <div class="daily-usage-fill" id="dailyUsageFill"></div>
+        </div>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-label">
+          <span id="progressText">처리 중...</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="alert alert-error" id="runAlert"></div>
+      <div class="alert alert-info"  id="runInfo"></div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="card result-section" id="resultSection">
+    <div class="card-header">
+      <div class="step-badge done">✓</div>
+      <h2>조회 결과</h2>
+    </div>
+    <div class="card-body">
+      <div class="result-header">
+        <h3 id="resultTitle">조회 완료</h3>
+        <button class="btn-download" id="downloadBtn">⬇ 결과 다운로드 (XLSX)</button>
+      </div>
+      <div class="stats" id="statsWrap"></div>
+      <div class="table-wrap">
+        <table id="resultTable">
+          <thead id="resultHead"></thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+      <p class="max-rows-note" id="maxRowsNote"></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* Portal auth check */
+(function() {
+  if (!sessionStorage.getItem('portal_auth')) {
+    window.location.replace('index.html');
+  }
+})();
+
+
+/* ════════════════════════════════════
+   Version Chip & Modal
+   ════════════════════════════════════ */
+const CURRENT_VERSION = '2.3.2';
+
+const VERSION_HISTORY = [
+  {
+    version: '2.3.2',
+    date: '2026-05-14',
+    changes: [
+      '접속 시 매번 비밀번호 재입력 필수 — localStorage 인증 저장 제거',
+    ]
+  },
+  {
+    version: '2.3.1',
+    date: '2026-05-13',
+    changes: [
+      'API 오류 메시지 개선 — 코드 -999(UNKNOWN) 등 주요 오류를 한국어로 해석해 표시',
+      '사전 검증 및 배치 처리 오류 파싱 통일 — code/msg 필드 우선 파싱 후 친화적 설명 제공',
+    ]
+  },
+  {
+    version: '2.3.0',
+    date: '2026-05-12',
+    changes: [
+      '결과 미리보기 최대 30건으로 변경 (전체 데이터는 다운로드 파일에 포함)',
+      '오늘 조회 현황 표시 — 조회 건수 및 남은 건수 실시간 업데이트 (일 최대 10,000건 기준)',
+    ]
+  },
+  {
+    version: '2.2.0',
+    date: '2026-05-12',
+    changes: [
+      '접속 시 비밀번호 로그인 화면 추가 (로그인 후 localStorage에 저장)',
+      'API 인증키 입력 카드에 공공데이터포털 이용 가이드 도움말 아이콘 추가',
+      'Contributor에 한국갤럽조사연구소 추가',
+    ]
+  },
+  {
+    version: '2.1.0',
+    date: '2026-05-12',
+    changes: [
+      '조회 실행 중 남은 예상 시간 실시간 표시',
+      '엑셀 업로드 영역에 양식 예시 다운로드 버튼 추가 (예시 10건)',
+      'Contributor LJH, GMJ, JHJ로 변경',
+    ]
+  },
+  {
+    version: '2.0.1',
+    date: '2026-05-12',
+    changes: [
+      '헤더 우측 하단 Contributor 표기 추가 (LJH · 한국갤럽조사연구소)',
+      'CLAUDE.md 축약 — 워크플로우 중심으로 재정리',
+    ]
+  },
+  {
+    version: '2.0.0',
+    date: '2026-05-12',
+    changes: [
+      '엑셀 파일 업로드 취소/삭제 버튼 추가',
+      '빈 헤더 행 자동 건너뛰기 — Unnamed 열 없이 실제 데이터 행부터 인식',
+      '업데이트 알림 배너 → 좌측 하단 버전 칩으로 변경',
+      'MiniMax 디자인 시스템 전면 적용 (DM Sans, 필 버튼, 모노크롬 팔레트)',
+    ]
+  },
+  {
+    version: '1.1.0',
+    date: '2026-05-12',
+    changes: [
+      '열 선택 드롭다운 범위를 A~G열(최대 7개)로 제한',
+      '열 선택 시 숫자 이외 문자 포함 행 자동 감지 및 경고 표시',
+      '조회 전 API KEY·시스템 사전 검증 (1건 테스트)',
+    ]
+  },
+  {
+    version: '1.0.0',
+    date: '2026-05-12',
+    changes: [
+      'Streamlit 앱을 단일 HTML 파일로 변환 (GitHub Pages 배포)',
+      '공공데이터포털 사업자등록정보 상태조회 API 연동 (100건 배치)',
+      '결과 테이블 표시 및 XLSX 다운로드 기능',
+    ]
+  }
+];
+
+function renderVerModal() {
+  const body = document.getElementById('verModalBody');
+  body.innerHTML = VERSION_HISTORY.map((v, i) => `
+    <div class="ver-entry">
+      <div class="ver-entry-head">
+        <span class="ver-num">v${v.version}</span>
+        ${i === 0 ? '<span class="ver-new-badge">NEW</span>' : ''}
+        <span class="ver-date">${v.date}</span>
+      </div>
+      <ul>${v.changes.map(c => `<li>${c}</li>`).join('')}</ul>
+    </div>
+  `).join('');
+}
+
+function openVerModal() {
+  renderVerModal();
+  document.getElementById('verModalOverlay').classList.add('open');
+  document.addEventListener('keydown', handleVerModalKey);
+}
+function closeVerModal() {
+  document.getElementById('verModalOverlay').classList.remove('open');
+  document.removeEventListener('keydown', handleVerModalKey);
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('verModalOverlay')) closeVerModal();
+}
+function handleVerModalKey(e) {
+  if (e.key === 'Escape') closeVerModal();
+}
+
+/* ════════════════════════════════════
+   State
+   ════════════════════════════════════ */
+let workbook   = null;
+let sheetData  = [];
+let headers    = [];
+let resultRows = [];
+
+const MAX_PREVIEW_ROWS = 30;
+
+/* ── DOM refs ── */
+const apiKeyInput   = document.getElementById('apiKey');
+const toggleKey     = document.getElementById('toggleKey');
+const fileInput     = document.getElementById('fileInput');
+const fileArea      = document.getElementById('fileArea');
+const fileNameEl    = document.getElementById('fileNameEl');
+const fileNameText  = document.getElementById('fileNameText');
+const fileRemoveBtn = document.getElementById('fileRemoveBtn');
+const colSelectWrap = document.getElementById('colSelectWrap');
+const colSelect     = document.getElementById('colSelect');
+const fileAlert     = document.getElementById('fileAlert');
+const colWarnAlert  = document.getElementById('colWarnAlert');
+const runBtn        = document.getElementById('runBtn');
+const progressWrap  = document.getElementById('progressWrap');
+const progressText  = document.getElementById('progressText');
+const progressPct   = document.getElementById('progressPct');
+const progressFill  = document.getElementById('progressFill');
+const runAlert      = document.getElementById('runAlert');
+const runInfo       = document.getElementById('runInfo');
+const resultSection = document.getElementById('resultSection');
+const resultTitle   = document.getElementById('resultTitle');
+const downloadBtn   = document.getElementById('downloadBtn');
+const statsWrap     = document.getElementById('statsWrap');
+const resultHead    = document.getElementById('resultHead');
+const resultBody    = document.getElementById('resultBody');
+const maxRowsNote   = document.getElementById('maxRowsNote');
+
+/* ════════════════════════════════════
+   Helpers
+   ════════════════════════════════════ */
+function showAlert(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+function hideAlert(el)      { el.style.display = 'none'; }
+function sleep(ms)          { return new Promise(r => setTimeout(r, ms)); }
+
+function interpretApiError(code, msg, httpStatus) {
+  if (code === -999 || msg === 'UNKNOWN') {
+    return `API 서버 오류 (코드 -999 / UNKNOWN)\n원인: 인증키가 만료·차단되었거나, 일일 요청 한도 초과, 또는 요청 형식 문제일 수 있습니다.\n→ 인증키를 다시 확인하고, 문제가 지속되면 공공데이터포털에서 한도를 확인해 주세요.`;
+  }
+  if (code === 22)        return 'API 오류 (코드 22): 일일 요청 한도를 초과했습니다. 내일 다시 시도해 주세요.';
+  if (code === 30)        return 'API 오류 (코드 30): 등록되지 않은 인증키입니다. API 인증키를 다시 확인해 주세요.';
+  if (httpStatus === 401) return 'API 인증 오류 (HTTP 401): 인증키가 유효하지 않습니다.';
+  if (httpStatus === 429) return 'API 오류 (HTTP 429): 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+  if (httpStatus === 500) return 'API 서버 오류 (HTTP 500): 서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+  const codeStr = code !== undefined ? `코드 ${code}` : `HTTP ${httpStatus}`;
+  return `API 오류 (${codeStr}): ${msg || '알 수 없는 오류'}`;
+}
+
+function checkRunReady() {
+  const ok = apiKeyInput.value.trim().length > 0
+          && sheetData.length > 0
+          && colSelect.value !== '';
+  runBtn.disabled = !ok;
+}
+
+let batchStartTime = 0;
+
+function setProgress(done, total) {
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  progressFill.style.width = pct + '%';
+  progressPct.textContent  = pct + '%';
+  let etaText = '';
+  if (done > 0 && done < total && batchStartTime > 0) {
+    const elapsed = Date.now() - batchStartTime;
+    const remainSec = Math.round((elapsed / done) * (total - done) / 1000);
+    if (remainSec >= 60) {
+      const m = Math.floor(remainSec / 60);
+      const s = remainSec % 60;
+      etaText = ` · 약 ${m}분${s > 0 ? ' ' + s + '초' : ''} 남음`;
+    } else {
+      etaText = ` · 약 ${remainSec}초 남음`;
+    }
+  }
+  progressText.textContent = `처리 중... (${done} / ${total} 건)${etaText}`;
+}
+
+function downloadSample() {
+  const rows = [
+    { '사업자등록번호': '1018141234', '회사명': '(주)한국테크놀로지' },
+    { '사업자등록번호': '2148273456', '회사명': '삼성산업(주)' },
+    { '사업자등록번호': '3017584567', '회사명': '(주)대한물산' },
+    { '사업자등록번호': '1348295678', '회사명': '현대산업개발' },
+    { '사업자등록번호': '5129306789', '회사명': '(주)서울유통' },
+    { '사업자등록번호': '2370417890', '회사명': 'LG솔루션(주)' },
+    { '사업자등록번호': '1281528901', '회사명': '(주)부산건설' },
+    { '사업자등록번호': '3192639012', '회사명': '대우해운상사' },
+    { '사업자등록번호': '4203740123', '회사명': '(주)인천무역' },
+    { '사업자등록번호': '5314851234', '회사명': '롯데상사(주)' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '사업자조회');
+  XLSX.writeFile(wb, '사업자조회_양식_예시.xlsx');
+}
+
+function normalizeRegNo(val) {
+  if (val === null || val === undefined) return '';
+  return String(val).replace(/[^0-9]/g, '').padStart(10, '0').slice(0, 10);
+}
+
+/* ════════════════════════════════════
+   File — clear
+   ════════════════════════════════════ */
+function clearFile() {
+  workbook  = null;
+  sheetData = [];
+  headers   = [];
+  fileInput.value             = '';
+  fileNameEl.style.display    = 'none';
+  fileNameText.textContent    = '';
+  colSelectWrap.style.display = 'none';
+  colSelect.innerHTML = '<option value="">-- 열을 선택하세요 --</option>';
+  hideAlert(fileAlert);
+  hideAlert(colWarnAlert);
+  checkRunReady();
+}
+
+fileRemoveBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  clearFile();
+});
+
+/* ════════════════════════════════════
+   API Key toggle
+   ════════════════════════════════════ */
+toggleKey.addEventListener('click', () => {
+  const hidden = apiKeyInput.type === 'password';
+  apiKeyInput.type      = hidden ? 'text' : 'password';
+  toggleKey.textContent = hidden ? '🙈' : '👁';
+});
+apiKeyInput.addEventListener('input', checkRunReady);
+
+/* ════════════════════════════════════
+   File drag / drop / pick
+   ════════════════════════════════════ */
+fileArea.addEventListener('dragover',  (e) => { e.preventDefault(); fileArea.classList.add('drag-over'); });
+fileArea.addEventListener('dragleave', ()  => fileArea.classList.remove('drag-over'));
+fileArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  fileArea.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  hideAlert(fileAlert);
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx', 'xls'].includes(ext)) {
+    showAlert(fileAlert, '⚠️ .xlsx 또는 .xls 파일만 지원합니다.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = new Uint8Array(ev.target.result);
+      workbook = XLSX.read(data, { type: 'array' });
+      const ws = workbook.Sheets[workbook.SheetNames[0]];
+
+      /* Read as raw 2-D array, detect first row with ≥2 non-empty cells as header */
+      const rawArray = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      let headerRowIdx = 0;
+      for (let i = 0; i < Math.min(rawArray.length, 20); i++) {
+        const row = rawArray[i] || [];
+        const nonEmpty = row.filter(c => c !== null && c !== undefined && String(c).trim() !== '');
+        if (nonEmpty.length >= 2) { headerRowIdx = i; break; }
+      }
+
+      /* Replace empty header cells with 열N placeholder */
+      const rawHdrRow = rawArray[headerRowIdx] || [];
+      headers = rawHdrRow.map((h, idx) => {
+        const s = (h !== null && h !== undefined) ? String(h).trim() : '';
+        return s === '' ? `열${idx + 1}` : s;
+      });
+
+      /* Build row objects from subsequent non-blank rows */
+      const raw = rawArray
+        .slice(headerRowIdx + 1)
+        .filter(row => row && row.some(c => c !== null && c !== undefined && String(c).trim() !== ''))
+        .map(row => {
+          const obj = {};
+          headers.forEach((h, idx) => { obj[h] = row[idx] !== undefined ? row[idx] : ''; });
+          return obj;
+        });
+
+      if (raw.length === 0) { showAlert(fileAlert, '⚠️ 파일에 데이터가 없습니다.'); return; }
+
+      sheetData = raw;
+
+      /* Populate column dropdown — first 7 columns */
+      colSelect.innerHTML = '<option value="">-- 열을 선택하세요 --</option>';
+      headers.slice(0, 7).forEach((h, idx) => {
+        const opt = document.createElement('option');
+        opt.value       = h;
+        opt.textContent = `${String.fromCharCode(65 + idx)}열: ${h}`;
+        if (/사업자|등록번호|b_no|biz|bizno/i.test(h)) opt.selected = true;
+        colSelect.appendChild(opt);
+      });
+
+      colSelectWrap.style.display = 'block';
+      fileNameText.textContent    = `📄 ${file.name}  (${raw.length.toLocaleString()} 행)`;
+      fileNameEl.style.display    = 'flex';
+      checkRunReady();
+    } catch (err) {
+      showAlert(fileAlert, '⚠️ 파일 파싱 오류: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ── Column selection warning ── */
+colSelect.addEventListener('change', () => {
+  checkRunReady();
+  hideAlert(colWarnAlert);
+  const col = colSelect.value;
+  if (!col || sheetData.length === 0) return;
+
+  const badRows = [];
+  sheetData.forEach((row, idx) => {
+    const stripped = String(row[col] ?? '').replace(/-/g, '');
+    if (stripped !== '' && /[^0-9]/.test(stripped)) badRows.push(idx + 2);
+  });
+
+  if (badRows.length > 0) {
+    const list = badRows.length > 20
+      ? badRows.slice(0, 20).join(', ') + ` 외 ${badRows.length - 20}건`
+      : badRows.join(', ');
+    showAlert(colWarnAlert,
+      `⚠️ 선택한 열에 숫자가 아닌 문자(특수기호 등)가 포함된 행이 있습니다. 파일을 다시 확인해 주세요.\n문제 행(엑셀 행 번호): ${list}`
+    );
+  }
+});
+
+/* ════════════════════════════════════
+   Run query
+   ════════════════════════════════════ */
+runBtn.addEventListener('click', runQuery);
+
+async function runQuery() {
+  hideAlert(runAlert);
+  hideAlert(runInfo);
+  resultSection.style.display = 'none';
+  resultRows = [];
+
+  const serviceKey = apiKeyInput.value.trim();
+  const col        = colSelect.value;
+  if (!serviceKey || !col) return;
+
+  const rows      = sheetData.map(row => ({ ...row, __b_no: normalizeRegNo(row[col]) }));
+  const validRows = rows.filter(r => r.__b_no.length === 10);
+  if (validRows.length === 0) {
+    showAlert(runAlert, '⚠️ 선택한 열에서 유효한 사업자등록번호(10자리)를 찾을 수 없습니다.');
+    return;
+  }
+
+  const API = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
+
+  /* Pre-flight: verify key with 1 record */
+  runBtn.disabled = true;
+  showAlert(runInfo, '⏳ API 연결 및 인증키 확인 중...');
+  try {
+    const r = await fetch(`${API}?serviceKey=${encodeURIComponent(serviceKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ b_no: [validRows[0].__b_no] })
+    });
+    if (!r.ok) {
+      const txt = await r.text();
+      let msg = `HTTP ${r.status} 오류`;
+      try {
+        const j = JSON.parse(txt);
+        if (j.status_code) msg = `${j.status_code} — ${j.request_msg || ''}`;
+        else if (j.code !== undefined) msg = interpretApiError(j.code, j.msg, r.status);
+        else msg = interpretApiError(undefined, undefined, r.status);
+      } catch { msg = interpretApiError(undefined, undefined, r.status); }
+      hideAlert(runInfo);
+      showAlert(runAlert, `⛔ 사전 검증 실패\n${msg}`);
+      runBtn.disabled = false; checkRunReady(); return;
+    }
+    const j = await r.json();
+    if (j.status_code && j.status_code !== 'OK') {
+      hideAlert(runInfo);
+      showAlert(runAlert, `⛔ 사전 검증 실패 — ${j.status_code}: ${j.request_msg || ''}\nAPI KEY를 다시 확인해 주세요.`);
+      runBtn.disabled = false; checkRunReady(); return;
+    }
+  } catch (e) {
+    hideAlert(runInfo);
+    showAlert(runAlert,
+      e instanceof TypeError
+        ? '⛔ 사전 검증 실패 — CORS 오류: 브라우저가 api.odcloud.kr 직접 호출을 차단했습니다.\n→ Netlify Functions 프록시 사용을 권장합니다.'
+        : `⛔ 사전 검증 실패 — ${e.message}`
+    );
+    runBtn.disabled = false; checkRunReady(); return;
+  }
+  hideAlert(runInfo);
+
+  /* Batch processing */
+  batchStartTime = Date.now();
+  progressWrap.style.display = 'block';
+  setProgress(0, validRows.length);
+
+  const BATCH = 100;
+  const statusMap = {};
+  let corsError = false;
+
+  try {
+    for (let i = 0; i < validRows.length; i += BATCH) {
+      const chunk = validRows.slice(i, i + BATCH);
+      let resp;
+      try {
+        resp = await fetch(`${API}?serviceKey=${encodeURIComponent(serviceKey)}`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ b_no: chunk.map(r => r.__b_no) })
+        });
+      } catch (fe) { corsError = true; throw fe; }
+
+      if (!resp.ok) {
+        const t = await resp.text();
+        let errMsg;
+        try {
+          const j = JSON.parse(t);
+          if (j.status_code) errMsg = `${j.status_code} — ${j.request_msg || ''}`;
+          else if (j.code !== undefined) errMsg = interpretApiError(j.code, j.msg, resp.status);
+          else errMsg = interpretApiError(undefined, undefined, resp.status);
+        } catch { errMsg = interpretApiError(undefined, undefined, resp.status); }
+        throw new Error(errMsg);
+      }
+      (await resp.json()).data?.forEach(item => { statusMap[item.b_no] = item; });
+      setProgress(Math.min(i + BATCH, validRows.length), validRows.length);
+      if (i + BATCH < validRows.length) await sleep(220);
+    }
+  } catch (err) {
+    progressWrap.style.display = 'none';
+    runBtn.disabled = false; checkRunReady();
+    showAlert(runAlert,
+      corsError
+        ? '⚠️ CORS 오류: 브라우저가 api.odcloud.kr 직접 호출을 차단했습니다.\n→ Netlify Functions 프록시 사용을 권장합니다.'
+        : '⚠️ 오류: ' + err.message
+    );
+    return;
+  }
+
+  /* Merge results */
+  const stats = { total: rows.length, active: 0, suspend: 0, closed: 0, err: 0 };
+  resultRows = rows.map(row => {
+    const b_no  = row.__b_no;
+    const found = b_no.length === 10 ? statusMap[b_no] : null;
+    const out   = { ...row };
+    delete out.__b_no;
+
+    if (found) {
+      out['사업자상태'] = found.b_stt    || '-';
+      out['상태코드']   = found.b_stt_cd || '-';
+      out['세금종류']   = found.tax_type  || '-';
+      const cd = found.b_stt_cd;
+      if      (cd === '01') stats.active++;
+      else if (cd === '02') stats.suspend++;
+      else if (cd === '03') stats.closed++;
+      else                  stats.err++;
+    } else {
+      out['사업자상태'] = b_no.length !== 10 ? '번호오류' : '조회실패';
+      out['상태코드']   = '-';
+      out['세금종류']   = '-';
+      stats.err++;
+    }
+    return out;
+  });
+
+  progressFill.style.width = '100%';
+  progressPct.textContent  = '100%';
+  progressText.textContent = '조회 완료!';
+  setTimeout(() => { progressWrap.style.display = 'none'; }, 1000);
+
+  addDailyUsage(validRows.length);
+  renderResult(resultRows, stats);
+  runBtn.disabled = false;
+  checkRunReady();
+}
+
+/* ════════════════════════════════════
+   Render result
+   ════════════════════════════════════ */
+function renderResult(rows, stats) {
+  resultSection.style.display = 'block';
+  resultTitle.textContent     = `조회 완료 — 총 ${rows.length.toLocaleString()}건`;
+
+  statsWrap.innerHTML = `
+    <span class="stat-pill pill-total">전체 ${stats.total}</span>
+    <span class="stat-pill pill-active">계속사업자 ${stats.active}</span>
+    <span class="stat-pill pill-suspend">휴업자 ${stats.suspend}</span>
+    <span class="stat-pill pill-closed">폐업자 ${stats.closed}</span>
+    ${stats.err ? `<span class="stat-pill pill-error">조회실패/오류 ${stats.err}</span>` : ''}
+  `;
+
+  if (rows.length === 0) return;
+  const cols = Object.keys(rows[0]);
+
+  resultHead.innerHTML = '<tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr>';
+  resultBody.innerHTML = rows.slice(0, MAX_PREVIEW_ROWS).map(row => {
+    const cd = row['상태코드'] || '';
+    return '<tr>' + cols.map(c => {
+      if (c === '사업자상태') {
+        const cls = cd === '01' ? 'badge-01' : cd === '02' ? 'badge-02' : cd === '03' ? 'badge-03' : 'badge-err';
+        return `<td><span class="badge ${cls}">${esc(row[c])}</span></td>`;
+      }
+      return `<td>${esc(String(row[c] ?? ''))}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+
+  maxRowsNote.textContent = rows.length > MAX_PREVIEW_ROWS
+    ? `* 화면에는 ${MAX_PREVIEW_ROWS}행까지 표시됩니다. 전체 데이터는 다운로드 파일에 포함됩니다.`
+    : '';
+
+  resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+
+/* ════════════════════════════════════
+   Daily Usage
+   ════════════════════════════════════ */
+const DAILY_LIMIT = 1000000;
+
+function dailyKey() {
+  const d = new Date();
+  return `biz_daily_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDailyUsage() {
+  return parseInt(localStorage.getItem(dailyKey()) || '0', 10);
+}
+
+function addDailyUsage(count) {
+  const key = dailyKey();
+  const cur  = parseInt(localStorage.getItem(key) || '0', 10);
+  localStorage.setItem(key, cur + count);
+  renderDailyUsage();
+}
+
+function renderDailyUsage() {
+  const used   = getDailyUsage();
+  const remain = Math.max(0, DAILY_LIMIT - used);
+  const pct    = Math.min(100, (used / DAILY_LIMIT) * 100);
+  const el     = document.getElementById('dailyUsage');
+  const nums   = document.getElementById('dailyUsageNums');
+  const fill   = document.getElementById('dailyUsageFill');
+  el.style.display = 'flex';
+  nums.innerHTML = `<strong>${used.toLocaleString()}건</strong> 조회 · 남은 <strong>${remain.toLocaleString()}건</strong>`;
+  fill.style.width = pct + '%';
+  fill.className = 'daily-usage-fill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
+}
+
+renderDailyUsage();
+
+/* ════════════════════════════════════
+   Download
+   ════════════════════════════════════ */
+downloadBtn.addEventListener('click', () => {
+  if (!resultRows.length) return;
+  const ws = XLSX.utils.json_to_sheet(resultRows.map(r => { const o = {...r}; delete o.__b_no; return o; }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '조회결과');
+  const now = new Date();
+  const ts  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  XLSX.writeFile(wb, `사업자상태_${ts}.xlsx`);
+});
+</script>
+</body>
+</html>

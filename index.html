@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사업체 정보 검색 통합 포털</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      --ink: #0a0a0a;
+      --surface: #f5f5f5;
+      --hairline: #e5e5e5;
+      --steel: #888;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+    }
+
+    body {
+      font-family: var(--font);
+      background: #fafafa;
+      min-height: 100vh;
+      color: var(--ink);
+    }
+
+    /* ── Login Screen ── */
+    #loginScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      padding: 40px 28px;
+      text-align: center;
+      background: #fff;
+    }
+    .login-logo {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+    .login-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+    .login-subtitle {
+      font-size: 0.875rem;
+      color: var(--steel);
+      margin-bottom: 24px;
+    }
+    .login-input-wrap {
+      display: flex;
+      border: 1.5px solid var(--hairline);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .login-input-wrap:focus-within {
+      border-color: #0a0a0a;
+      box-shadow: 0 0 0 3px rgba(10,10,10,0.08);
+    }
+    .login-input-wrap input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 12px 16px;
+      font-size: 0.9375rem;
+      font-family: var(--font);
+      color: var(--ink);
+      background: transparent;
+    }
+    .login-input-wrap button {
+      background: var(--surface);
+      border: none;
+      border-left: 1px solid var(--hairline);
+      padding: 0 14px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background .15s;
+    }
+    .login-input-wrap button:hover { background: #ebebeb; }
+    .login-error {
+      display: none;
+      font-size: 0.8125rem;
+      color: #dc2626;
+      margin-top: 8px;
+      text-align: left;
+    }
+    .login-btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 13px 24px;
+      background: #0a0a0a;
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-full);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .login-btn:hover { background: #2a2a2a; }
+
+    /* ── Portal Main ── */
+    #portalMain { display: none; }
+
+    /* ── Header ── */
+    .header {
+      background: #0a0a0a;
+      color: #fff;
+      padding: 48px 24px 40px;
+      text-align: center;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: var(--radius-full);
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+    .header p {
+      font-size: 0.9375rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ── Container ── */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--steel);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    /* ── Nav Grid ── */
+    .nav-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .nav-card {
+      background: #fff;
+      border: 1.5px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      padding: 28px 20px 24px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      transition: border-color .15s, box-shadow .15s, transform .1s;
+    }
+    .nav-card:hover {
+      border-color: #0a0a0a;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+    .nav-card-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .nav-card-body { width: 100%; }
+    .nav-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: -0.2px;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    .nav-card-desc {
+      font-size: 0.8125rem;
+      color: var(--steel);
+      line-height: 1.5;
+    }
+    .nav-card-arrow {
+      margin-top: auto;
+      align-self: flex-end;
+      font-size: 1.25rem;
+      color: #ccc;
+      transition: color .15s, transform .15s;
+    }
+    .nav-card:hover .nav-card-arrow {
+      color: #0a0a0a;
+      transform: translateX(4px);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.75rem;
+      color: #bbb;
+    }
+
+    @media (max-width: 600px) {
+      .nav-grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login Screen ── -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🏢</div>
+    <div class="login-title">사업체 정보 검색 통합 포털</div>
+    <div class="login-subtitle">접속하려면 비밀번호를 입력하세요</div>
+    <div class="login-input-wrap">
+      <input type="password" id="loginPwd" placeholder="비밀번호" autocomplete="current-password">
+      <button id="loginToggle" onclick="togglePwd()">👁</button>
+    </div>
+    <div class="login-error" id="loginError">비밀번호가 올바르지 않습니다.</div>
+    <button class="login-btn" onclick="submitLogin()">입장하기</button>
+  </div>
+</div>
+
+<!-- ── Portal Main ── -->
+<div id="portalMain">
+  <div class="header">
+    <div class="header-badge">🔍 통합 포털</div>
+    <h1>사업체 정보 검색<br>통합 포털</h1>
+    <p>세 가지 조회 서비스를 하나의 포털에서 이용하세요</p>
+  </div>
+
+  <div class="container">
+    <div class="section-label">서비스 선택</div>
+    <div class="nav-grid">
+      <a href="biz-tracker.html" class="nav-card" onclick="return beforeNav()">
+        <div class="nav-card-icon">📋</div>
+        <div class="nav-card-body">
+          <div class="nav-card-title">사업자<br>휴폐업 조회</div>
+          <div class="nav-card-desc">국세청 공공데이터포털 API 기반 사업자등록 상태 일괄 조회</div>
+        </div>
+        <div class="nav-card-arrow">→</div>
+      </a>
+      <a href="biznoapi.html" class="nav-card" onclick="return beforeNav()">
+        <div class="nav-card-icon">⚡</div>
+        <div class="nav-card-body">
+          <div class="nav-card-title">비즈노<br>기반 검색</div>
+          <div class="nav-card-desc">비즈노(bizno.net) API·웹 크롤링 기반 사업자 상세정보 조회</div>
+        </div>
+        <div class="nav-card-arrow">→</div>
+      </a>
+      <a href="ksic.html" class="nav-card" onclick="return beforeNav()">
+        <div class="nav-card-icon">📊</div>
+        <div class="nav-card-body">
+          <div class="nav-card-title">한국표준산업분류<br>검색</div>
+          <div class="nav-card-desc">KSIC 제11차 개정 코드 검색 및 엑셀 일괄 분류 변환</div>
+        </div>
+        <div class="nav-card-arrow">→</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="footer">한국갤럽조사연구소</div>
+</div>
+
+<script>
+const LOGIN_PWD = 'gallup1974';
+
+document.getElementById('loginPwd').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitLogin();
+});
+
+function submitLogin() {
+  const pwd = document.getElementById('loginPwd').value;
+  const errEl = document.getElementById('loginError');
+  if (pwd === LOGIN_PWD) {
+    sessionStorage.setItem('portal_auth', '1');
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('portalMain').style.display = 'block';
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('loginPwd').value = '';
+    document.getElementById('loginPwd').focus();
+  }
+}
+
+function togglePwd() {
+  const inp = document.getElementById('loginPwd');
+  const btn = document.getElementById('loginToggle');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function beforeNav() {
+  // Ensure auth is set before navigating to sub-pages
+  sessionStorage.setItem('portal_auth', '1');
+  return true;
+}
+
+// If already authenticated in this session, skip login
+if (sessionStorage.getItem('portal_auth')) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('portalMain').style.display = 'block';
+}
+</script>
+</body>
+</html>
