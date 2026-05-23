@@ -245,6 +245,28 @@
     .ver-entry + .ver-entry { border-top: 1px solid var(--hairline-soft); padding-top: var(--space-xl); }
 
     /* ── Home Screen ── */
+    .home-portal-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: var(--surface-card);
+      color: var(--body);
+      border: 1px solid var(--hairline);
+      border-radius: var(--rounded-md);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s, border-color .15s;
+      z-index: 10;
+    }
+    .home-portal-btn:hover { background: var(--surface-soft); border-color: #a0a297; }
+    
     #homeScreen {
       position: fixed;
       inset: 0;
@@ -255,6 +277,7 @@
       justify-content: center;
       gap: 40px;
       padding: 24px;
+      min-height: 100vh;
     }
     .home-logo { font-size: 2.5rem; line-height: 1; }
     .home-title { text-align: center; }
@@ -784,11 +807,11 @@
   </style>
 </head>
 <body>
-<a href="index.html" class="portal-back-btn">← 포털로</a>
 
 
 <!-- ── Home Screen ── -->
-<div id="homeScreen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-xxl);">
+<div id="homeScreen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-xxl); position:relative;">
+  <a href="index.html" class="home-portal-btn">← 포털로</a>
   <div class="home-logo">🔍</div>
   <div class="home-title">
     <h1>비즈노 기반 사업자정보 조회</h1>
