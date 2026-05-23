@@ -44,6 +44,25 @@ if (sessionStorage.getItem('portal_auth')) {
 }
 ```
 
+## 버전 관리
+
+### 구조
+- `VERSION_HISTORY` 배열: 최신 버전이 **배열 맨 앞**
+- 하단 좌측 fixed 버전 칩 (`.ver-chip#verChip`): 로그인 성공 후에만 `.visible` 클래스 추가로 노출
+- 버전 칩 클릭 → 업데이트 내역 모달 (`.ver-modal-overlay`)
+
+### 버전 업데이트 시
+1. `VERSION_HISTORY` 배열 **맨 앞**에 새 항목 추가:
+   ```javascript
+   { version: 'x.x.x', date: 'YYYY-MM-DD', changes: ['변경사항 ...'] }
+   ```
+2. 버전 칩 HTML의 버전 텍스트 업데이트: `<button class="ver-chip" ...> v1.0.0`
+
+### 버전 표시 조건
+- `showVerChip()` — `submitLogin()` 성공 시 호출
+- `showVerChip()` — 이미 `sessionStorage('portal_auth')` 있을 때도 호출
+- 로그인 화면(`#loginScreen`) 상태에서는 버전 칩 숨김
+
 ## 수정 시 주의사항
 
 - `beforeNav()` 함수는 각 `.nav-card`의 `onclick="return beforeNav()"` 에서 호출됨. 제거하지 말 것.
