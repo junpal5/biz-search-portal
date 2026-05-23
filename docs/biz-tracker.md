@@ -70,6 +70,21 @@
 ### 헤더 자동 감지 로직
 `XLSX.utils.sheet_to_json(ws, { header: 1 })` → 비어있지 않은 셀이 2개 이상인 첫 행을 헤더로 사용. 빈 셀은 `열N`으로 대체.
 
+## 버전 관리
+
+### 업데이트 절차
+1. `biz-tracker.html` 내 `VERSION_HISTORY` 배열 **맨 앞**에 새 항목 추가
+2. 하단 버전 칩 HTML 텍스트 업데이트 (`.ver-chip` 버튼 내 `vX.X.X`)
+
+### 작업 완료 후 버전 추천 방법
+→ 루트 `CLAUDE.md`의 **"버전 관리 — 작업 완료 후 버전 추천 워크플로우"** 참조.
+
+```bash
+git diff HEAD~1 HEAD -- biz-tracker.html   # 변경 내역 파악
+```
+
+변경 내역을 검토한 뒤 패치/마이너/메이저 추천을 제시하고, 사용자가 선택하면 즉시 반영한다.
+
 ## 수정 시 주의사항
 
 - 원본 레포 `junpal5/biz-tracker`의 기능과 싱크를 맞출 때, 원본 CLAUDE.md의 버전 관리 패턴 참조.

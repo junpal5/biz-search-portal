@@ -120,6 +120,23 @@ callBizno(query, gb)        — 원시 API 호출 (q= 파라미터)
 # 8. </head> 직전에 sessionStorage 인증 체크 <script> 삽입
 ```
 
+## 버전 관리
+
+### 업데이트 절차
+1. `biznoapi.html` 내 `VERSION_HISTORY` 배열 **맨 앞**에 새 항목 추가
+2. 하단 버전 칩 HTML 텍스트 업데이트 (`.ver-chip` 버튼 내 `vX.X.X`)
+
+### 작업 완료 후 버전 추천 방법
+→ 루트 `CLAUDE.md`의 **"버전 관리 — 작업 완료 후 버전 추천 워크플로우"** 참조.
+
+```bash
+git diff HEAD~1 HEAD -- biznoapi.html   # 변경 내역 파악
+```
+
+변경 내역을 검토한 뒤 패치/마이너/메이저 추천을 제시하고, 사용자가 선택하면 즉시 반영한다.
+
+> **주의**: `biznoapi.html`을 원본 레포(`biz-tracker-biznoapi/index.html`)로 교체할 경우 버전 번호는 원본 기준을 따름.
+
 ## 버전 히스토리 (포털 통합 기준)
 | 버전 | 날짜 | 주요 변경 |
 |------|------|----------|

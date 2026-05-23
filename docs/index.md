@@ -58,6 +58,10 @@ if (sessionStorage.getItem('portal_auth')) {
    ```
 2. 버전 칩 HTML의 버전 텍스트 업데이트: `<button class="ver-chip" ...> v1.0.0`
 
+### 작업 완료 후 버전 추천 방법
+→ 루트 `CLAUDE.md`의 **"버전 관리 — 작업 완료 후 버전 추천 워크플로우"** 참조.
+git diff로 변경 내역을 파악한 뒤 패치/마이너/메이저 중 추천을 제시하고, 사용자가 선택하면 업데이트한다.
+
 ### 버전 표시 조건
 - `showVerChip()` — `submitLogin()` 성공 시 호출
 - `showVerChip()` — 이미 `sessionStorage('portal_auth')` 있을 때도 호출
