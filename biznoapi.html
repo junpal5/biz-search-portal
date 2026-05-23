@@ -96,13 +96,6 @@
       --color-closed-text:  var(--accent-red);
       --color-error-bg:     var(--accent-purple-soft);
       --color-error-text:   var(--accent-purple);
-      --space-xs: var(--space-sm);
-      --space-md: var(--space-lg);
-      --space-xl: var(--space-xl);
-      --space-xxl: var(--space-xxl);
-      --rounded-sm: var(--rounded-md);
-      --rounded-lg: var(--rounded-md);
-      --rounded-xl: var(--rounded-lg);
       --rounded-full: 9999px;
     }
 
@@ -722,6 +715,25 @@
     }
     .field-chip:hover:not(.active) { background: #d5d7d0; border-color: var(--hairline); }
 
+    /* ── Page header back button ── */
+    .page-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: var(--surface-soft);
+      border: 1px solid var(--hairline-soft);
+      border-radius: var(--rounded-md);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      color: var(--charcoal);
+      transition: background .12s, border-color .12s;
+      text-decoration: none;
+    }
+    .page-back-btn:hover { background: #d5d7d0; border-color: var(--hairline); }
+
     /* ── Back button (in-page) ── */
     .back-btn {
       display: inline-flex;
@@ -858,7 +870,7 @@
   <button class="page-back-btn" onclick="goHome()">← 홈</button>
   <h1>비즈노 기반 사업자정보 조회</h1>
   <p>bizno.net API 기반 사업자 상세정보 일괄 조회 서비스</p>
-  <span style="position:absolute; bottom:var(--space-md); right:var(--space-xl); font-size:0.6875rem; color:rgba(255,255,255,0.38); font-weight:500; letter-spacing:0.02em;">Contributor : LJH</span>
+  <span style="position:absolute; bottom:var(--space-md); right:var(--space-xl); font-size:0.6875rem; color:var(--stone); font-weight:500; letter-spacing:0.02em;">Contributor : LJH</span>
 </div>
 
 <div class="page-container">
@@ -882,7 +894,7 @@
   <!-- API 단건 테스트 -->
   <div class="card" id="testSection">
     <div class="card-header">
-      <div class="step-badge" style="background:var(--color-brand-blue);">T</div>
+      <div class="step-badge" style="background:var(--surface-dark); color:var(--on-dark); border-color:var(--surface-dark);">T</div>
       <h2>API 단건 테스트 <span style="font-size:0.75rem; font-weight:400; color:var(--color-steel);">— 실제 응답 구조 확인용</span></h2>
     </div>
     <div class="card-body">
@@ -904,7 +916,7 @@
           </select>
         </div>
         <div style="padding-bottom:1px;">
-          <button onclick="runTestApi()" style="padding:10px var(--space-lg); background:var(--color-brand-blue); color:#fff; border:none; border-radius:var(--rounded-full); font-size:0.875rem; font-weight:600; font-family:var(--font); cursor:pointer; white-space:nowrap;">테스트 조회</button>
+          <button onclick="runTestApi()" class="btn-run" style="width:auto; white-space:nowrap;">테스트 조회</button>
         </div>
       </div>
       <p class="hint">결과는 아래와 브라우저 콘솔(F12)에 표시됩니다.</p>
@@ -913,7 +925,7 @@
           <span style="font-size:0.75rem; font-weight:600; color:var(--color-steel);">RAW API 응답</span>
           <span id="testResultMeta" style="font-size:0.75rem; color:var(--color-stone);"></span>
         </div>
-        <pre id="testResult" style="background:var(--color-primary); color:#a8ff78; font-size:0.75rem; padding:var(--space-md); border-radius:var(--rounded-md); overflow-x:auto; white-space:pre-wrap; word-break:break-all; max-height:400px; overflow-y:auto;"></pre>
+        <pre id="testResult" style="background:var(--surface-dark); color:var(--on-dark); font-size:0.75rem; font-family:var(--font-mono); padding:var(--space-md); border-radius:var(--rounded-md); overflow-x:auto; white-space:pre-wrap; word-break:break-all; max-height:400px; overflow-y:auto;"></pre>
       </div>
       <div class="alert alert-error" id="testAlert"></div>
     </div>
@@ -1055,7 +1067,7 @@
   <button class="page-back-btn" onclick="goHome()">← 홈</button>
   <h1>사업자등록번호 조회</h1>
   <p>비즈노 웹 크롤링 기반 사업자번호 자동 매핑</p>
-  <span style="position:absolute; bottom:var(--space-md); right:var(--space-xl); font-size:0.6875rem; color:rgba(255,255,255,0.38); font-weight:500; letter-spacing:0.02em;">Contributor : LJH</span>
+  <span style="position:absolute; bottom:var(--space-md); right:var(--space-xl); font-size:0.6875rem; color:var(--stone); font-weight:500; letter-spacing:0.02em;">Contributor : LJH</span>
 </div>
 
 <div class="page-container">
