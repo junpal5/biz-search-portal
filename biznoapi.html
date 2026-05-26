@@ -229,6 +229,21 @@
     .result-header h3 { font-size: 0.9375rem; font-weight: 600; color: var(--color-ink); }
     .btn-download { padding: 9px var(--space-lg); background: var(--color-primary); color: var(--color-on-primary); border: none; border-radius: var(--rounded-full); font-size: 0.8125rem; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .15s; }
     .btn-download:hover { background: #2a2a2a; }
+    /* ── Checkpoint & Recovery ── */
+    .recovery-banner { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--rounded-lg); padding: var(--space-md) var(--space-lg); display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-md); }
+    .recovery-banner-text { flex: 1; min-width: 200px; font-size: 0.8125rem; color: #854D0E; }
+    .recovery-banner-text strong { display: block; margin-bottom: 2px; font-size: 0.875rem; }
+    .btn-recovery-dl { padding: 6px var(--space-md); background: #D97706; color: #fff; border: none; border-radius: var(--rounded-full); font-size: 0.75rem; font-weight: 600; font-family: var(--font); cursor: pointer; white-space: nowrap; transition: background .15s; }
+    .btn-recovery-dl:hover { background: #B45309; }
+    .btn-recovery-clear { padding: 6px var(--space-sm); background: transparent; color: #92400E; border: 1px solid #FCD34D; border-radius: var(--rounded-full); font-size: 0.75rem; font-weight: 600; font-family: var(--font); cursor: pointer; white-space: nowrap; }
+    .btn-recovery-clear:hover { background: #FEF9C3; }
+    .checkpoint-interval-row { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); font-size: 0.8125rem; color: var(--color-steel); }
+    .checkpoint-interval-row input[type=number] { width: 60px; padding: 5px 8px; border: 1px solid var(--color-hairline); border-radius: var(--rounded-sm); font-size: 0.8125rem; font-family: var(--font); text-align: center; }
+    .checkpoint-row { display: flex; align-items: center; gap: var(--space-sm); margin-top: var(--space-sm); flex-wrap: wrap; }
+    .checkpoint-status { font-size: 0.75rem; color: var(--color-steel); flex: 1; }
+    .btn-checkpoint { padding: 5px var(--space-md); background: #2563EB; color: #fff; border: none; border-radius: var(--rounded-full); font-size: 0.75rem; font-weight: 600; font-family: var(--font); cursor: pointer; white-space: nowrap; transition: background .15s; }
+    .btn-checkpoint:hover:not(:disabled) { background: #1D4ED8; }
+    .btn-checkpoint:disabled { opacity: 0.35; cursor: not-allowed; }
     .stats { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-bottom: var(--space-md); }
     .stat-pill { padding: 4px var(--space-sm); border-radius: var(--rounded-full); font-size: 0.75rem; font-weight: 600; }
     .pill-total   { background: var(--color-surface); color: var(--color-charcoal); border: 1px solid var(--color-hairline); }
@@ -462,6 +477,16 @@
 
 <div class="container">
 
+  <!-- 비정상 중단 복구 배너 -->
+  <div class="recovery-banner" id="recoveryBanner" style="display:none;">
+    <div class="recovery-banner-text">
+      <strong>⚠️ 이전 세션의 중단 데이터가 감지되었습니다</strong>
+      <span id="recoveryBannerInfo"></span>
+    </div>
+    <button class="btn-recovery-dl" onclick="downloadCrashRecovery()">📥 이전 데이터 다운로드</button>
+    <button class="btn-recovery-clear" onclick="clearCrashRecovery()">✕ 삭제</button>
+  </div>
+
   <!-- Step 1: API 설정 -->
   <div class="card">
     <div class="card-header" style="border-bottom:none;">
@@ -586,6 +611,11 @@
       <h2>조회 실행</h2>
     </div>
     <div class="card-body">
+      <div class="checkpoint-interval-row">
+        <span>중간 저장 간격:</span>
+        <input type="number" id="checkpointInterval" value="100" min="10" max="5000" step="10" title="이 건 수마다 체크포인트 생성" />
+        <span>건마다 체크포인트 자동 생성</span>
+      </div>
       <button class="btn-run" id="runBtn" disabled onclick="runQuery()">🔍 조회 시작</button>
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-label">
@@ -597,6 +627,10 @@
         </div>
         <div class="progress-bar-bg">
           <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="checkpoint-row" id="checkpointWrap" style="display:none;">
+          <span class="checkpoint-status" id="checkpointInfo"></span>
+          <button class="btn-checkpoint" id="checkpointDlBtn" disabled onclick="downloadCheckpoint()">📥 중간 저장 다운로드</button>
         </div>
       </div>
       <div class="alert alert-error" id="runAlert"></div>
@@ -936,6 +970,9 @@ let headers         = [];
 let resultRows      = [];
 let disambigResolve = null;
 let queryCancelled  = false;
+let checkpointRows      = [];
+let checkpointApiFields = [];
+const CRASH_RECOVERY_KEY = 'bizno_api_crash_recovery';
 const MAX_PREVIEW   = 30;
 
 const BIZNO_FREE    = 'https://bizno.net/api/fapi';
@@ -1068,6 +1105,7 @@ function goApiPage() {
   document.getElementById('homeScreen').style.display    = 'none';
   document.getElementById('webLookupPage').style.display = 'none';
   document.getElementById('apiPage').style.display       = 'block';
+  checkCrashRecovery();
 }
 
 function goWebLookupPage() {
@@ -1533,6 +1571,13 @@ async function runQuery() {
   document.getElementById('resultSection').style.display   = 'none';
   document.getElementById('disambigSection').style.display = 'none';
   resultRows = [];
+  checkpointRows      = [];
+  checkpointApiFields = [];
+  clearCrashRecovery();
+  document.getElementById('checkpointWrap').style.display = 'none';
+  document.getElementById('checkpointDlBtn').disabled     = true;
+  document.getElementById('checkpointInfo').textContent   = '';
+  const cpInterval = getCheckpointInterval();
 
   const biznoCol = biznoColSel.value;
   const nameCol  = nameColSel.value;
@@ -1642,9 +1687,34 @@ async function runQuery() {
       detailMap[rowIdx] = { error: e.message };
     }
     if (i < allLookup.length - 1) await sleep(300);
+
+    /* ── 체크포인트 ── */
+    if ((i + 1) % cpInterval === 0) {
+      const cp = buildPartialCheckpoint(allLookup, detailMap, skipRows, nameFailed, i + 1);
+      checkpointRows = cp.rows;
+      checkpointApiFields = cp.apiFields;
+      document.getElementById('checkpointWrap').style.display = 'flex';
+      document.getElementById('checkpointDlBtn').disabled = false;
+      document.getElementById('checkpointInfo').textContent =
+        `마지막 체크포인트: ${cp.rows.length}건 · ${i + 1}/${allLookup.length} 처리됨`;
+      saveCrashRecovery(cp.rows, cp.apiFields);
+    }
   }
 
   setProgress(queryCancelled ? '중단됨' : '완료!', 100);
+
+  /* ── 최종 체크포인트 ── */
+  if (allLookup.length > 0) {
+    const cp = buildPartialCheckpoint(allLookup, detailMap, skipRows, nameFailed, allLookup.length);
+    checkpointRows = cp.rows;
+    checkpointApiFields = cp.apiFields;
+    document.getElementById('checkpointWrap').style.display = 'flex';
+    document.getElementById('checkpointDlBtn').disabled = false;
+    document.getElementById('checkpointInfo').textContent = queryCancelled
+      ? `중단 시점 ${cp.rows.length}건 (전체 ${allLookup.length}건 중)`
+      : `처리 완료 ${cp.rows.length}건`;
+    saveCrashRecovery(cp.rows, cp.apiFields);
+  }
 
   /* ── 결과 빌드 ── */
   const failMap = {};
@@ -1814,6 +1884,134 @@ function downloadResult() {
   const now = new Date();
   const ts  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
   XLSX.writeFile(wb, `비즈노_사업자정보_${ts}.xlsx`);
+}
+
+/* ════════════════════════════════════
+   중간 저장 / 체크포인트
+   ════════════════════════════════════ */
+function getCheckpointInterval() {
+  const v = parseInt(document.getElementById('checkpointInterval').value, 10);
+  return (isNaN(v) || v < 1) ? 100 : v;
+}
+
+function buildPartialCheckpoint(allLookup, detailMap, skipRows, nameFailed, processedCount) {
+  const apiFieldSet = new Set();
+  Object.values(detailMap).forEach(d => {
+    if (d.detail) Object.keys(d.detail).forEach(k => apiFieldSet.add(k));
+  });
+  const cpApiFields = sortFields([...apiFieldSet]);
+
+  const failMap = {};
+  [...skipRows, ...nameFailed].forEach(f => { failMap[f.rowIdx] = f.reason; });
+
+  const rows = [];
+  sheetData.forEach((row, idx) => {
+    const entry  = detailMap[idx];
+    const reason = failMap[idx];
+    const base   = { ...row };
+    if (entry) {
+      if (entry.detail) rows.push({ ...base, ...entry.detail, _status: '성공' });
+      else              rows.push({ ...base, _status: `실패: ${entry.error || 'API 오류'}` });
+    } else if (reason !== undefined) {
+      rows.push({ ...base, _status: reason });
+    }
+    /* 미처리 행은 체크포인트에서 제외 */
+  });
+  return { rows, apiFields: cpApiFields };
+}
+
+function buildCheckpointXlsxData(rows) {
+  if (!rows.length) return null;
+  const selectedFields = getSelectedFields();
+  const fieldSet = new Set();
+  rows.forEach(r => Object.keys(r).forEach(k => fieldSet.add(k)));
+  const orderedFields = [
+    ...sortFields([...fieldSet].filter(k => k !== '_status' && (headers.includes(k) || selectedFields.includes(k)))),
+    '_status',
+  ];
+  const headerRow = orderedFields.map(k => FIELD_KO[k] || k);
+  const dataRows  = rows.map(r =>
+    orderedFields.map(k => { const v = r[k]; return (v === undefined || v === null) ? '' : v; })
+  );
+  return { headerRow, dataRows, orderedFields };
+}
+
+function triggerXlsxDownload(headerRow, dataRows, orderedFields, filename) {
+  const colWidths = {
+    bno: 14, company: 24, companyen: 30, ceo: 10,
+    cno: 18, BsttCd: 8, bstt: 10, TaxTypeCd: 8, taxtype: 22,
+    fdate: 12, enpEstblDt: 12, openDt: 12, EndDt: 12,
+    zipcd: 8, zip_cd: 8, addr_o: 32, adres: 32, addr_n: 32, rdnmadr: 32,
+    phone: 14, telno: 14, fax: 14, faxno: 14,
+    btype: 20, bizcnd: 20, bzdo: 20, bsector: 20, hscd: 12, kscd: 12,
+    scale: 10, emp: 8,
+    homepage: 30, hmgPg: 30, saleno: 22, tno_1st: 22,
+    lat: 18, lng: 18, lon: 18,
+    bizyear: 10, saleamt: 16, bzoppft: 16, crtmnpf: 16,
+    cptlamt: 16, tastamt: 16, tdbtamt: 16, tcptamt: 16,
+    udate: 12, regdate: 12, _status: 14,
+  };
+  const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+  if (orderedFields) ws['!cols'] = orderedFields.map(k => ({ wch: colWidths[k] || 15 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '사업자정보');
+  XLSX.writeFile(wb, filename);
+}
+
+function downloadCheckpoint() {
+  if (!checkpointRows.length) return;
+  const xd = buildCheckpointXlsxData(checkpointRows);
+  if (!xd) return;
+  const now = new Date();
+  const ts  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  triggerXlsxDownload(xd.headerRow, xd.dataRows, xd.orderedFields, `비즈노_중간저장_${ts}.xlsx`);
+}
+
+function saveCrashRecovery(rows, apiFields) {
+  if (!rows.length) return;
+  try {
+    const xd = buildCheckpointXlsxData(rows);
+    if (!xd) return;
+    const now = new Date();
+    const data = {
+      ts:            now.toLocaleString('ko-KR'),
+      count:         rows.length,
+      headerRow:     xd.headerRow,
+      orderedFields: xd.orderedFields,
+      dataRows:      xd.dataRows,
+    };
+    sessionStorage.setItem(CRASH_RECOVERY_KEY, JSON.stringify(data));
+  } catch (e) { /* QuotaExceededError 등 — 무시 */ }
+}
+
+function checkCrashRecovery() {
+  try {
+    const raw = sessionStorage.getItem(CRASH_RECOVERY_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data || !data.count) return;
+    document.getElementById('recoveryBannerInfo').textContent =
+      `${data.count}건 처리됨 · 저장 시각: ${data.ts}`;
+    document.getElementById('recoveryBanner').style.display = 'flex';
+  } catch (e) { /* ignore */ }
+}
+
+function downloadCrashRecovery() {
+  try {
+    const raw = sessionStorage.getItem(CRASH_RECOVERY_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const safeName = (data.ts || '').replace(/[:/\s]/g, '');
+    triggerXlsxDownload(data.headerRow, data.dataRows, data.orderedFields, `비즈노_중단복구_${safeName}.xlsx`);
+  } catch (e) {
+    alert('복구 데이터를 읽을 수 없습니다.');
+  }
+}
+
+function clearCrashRecovery() {
+  sessionStorage.removeItem(CRASH_RECOVERY_KEY);
+  const banner = document.getElementById('recoveryBanner');
+  if (banner) banner.style.display = 'none';
 }
 
 /* ════════════════════════════════════
