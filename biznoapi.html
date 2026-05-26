@@ -1449,9 +1449,19 @@ function parseItems(data) {
   return [];
 }
 
+class DailyLimitError extends Error {
+  constructor(msg) { super(msg); this.name = 'DailyLimitError'; }
+}
+
 function checkApiError(data) {
   if (data.resultCode !== undefined && data.resultCode < 0) {
-    throw new Error(`API 오류 (${data.resultCode}): ${data.resultMsg || '알 수 없는 오류'}`);
+    const msg = data.resultMsg || '알 수 없는 오류';
+    const lower = String(msg).toLowerCase();
+    const isLimit = lower.includes('한도') || lower.includes('초과') ||
+                    lower.includes('limit') || lower.includes('quota') ||
+                    lower.includes('exceed') || data.resultCode === -2;
+    if (isLimit) throw new DailyLimitError(`일일 조회 한도 초과 (${data.resultCode}): ${msg}`);
+    throw new Error(`API 오류 (${data.resultCode}): ${msg}`);
   }
 }
 
@@ -1571,6 +1581,7 @@ async function runQuery() {
   document.getElementById('resultSection').style.display   = 'none';
   document.getElementById('disambigSection').style.display = 'none';
   resultRows = [];
+  let dailyLimitReached = false;
   checkpointRows      = [];
   checkpointApiFields = [];
   clearCrashRecovery();
@@ -1684,6 +1695,11 @@ async function runQuery() {
           '→ 서버 프록시(예: Netlify Functions)를 통해 호출해야 합니다.');
         return;
       }
+      if (e instanceof DailyLimitError) {
+        dailyLimitReached = true;
+        queryCancelled    = true;
+        break;
+      }
       detailMap[rowIdx] = { error: e.message };
     }
     if (i < allLookup.length - 1) await sleep(300);
@@ -1750,6 +1766,16 @@ async function runQuery() {
   const failCnt    = sheetData.length - successCnt;
 
   renderResult(resultRows, successCnt, failCnt, apiFields);
+
+  if (dailyLimitReached) {
+    document.getElementById('resultTitle').textContent =
+      `⚠️ 일일 한도 초과 — ${successCnt.toLocaleString()}건 처리 후 자동 중단`;
+    showAlert(document.getElementById('runInfo'),
+      `일일 조회 한도에 도달하여 조회가 자동 중단되었습니다.\n` +
+      `처리된 ${successCnt.toLocaleString()}건의 데이터를 아래 버튼 또는 자동 저장 파일로 확인하세요.`);
+    setTimeout(() => downloadResult(), 400);
+  }
+
   document.getElementById('runBtn').disabled = false;
   checkRunReady();
 }
